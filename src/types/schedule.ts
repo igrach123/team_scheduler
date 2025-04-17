@@ -1,8 +1,8 @@
 export interface Employee {
   id: string;
   name: string;
-  email: string;
   role: "employee" | "admin";
+  // Removed email since all employees will be managed under one admin account
 }
 
 export interface Activity {
