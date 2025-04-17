@@ -10,6 +10,7 @@ import {
   updateEmployee,
   deleteEmployee,
   saveActivity,
+  deleteActivity,
 } from "@/lib/firestore";
 
 interface FormEmployee {
@@ -35,7 +36,27 @@ export default function AdminDashboard() {
     description: "",
     color: "#000000",
     defaultDuration: 30,
+    startTime: "",
+    endTime: "",
   });
+
+  const calculateDuration = (start: string, end: string) => {
+    if (!start || !end) return 0;
+    const startDate = new Date(`2000-01-01T${start}`);
+    const endDate = new Date(`2000-01-01T${end}`);
+    return Math.round((endDate.getTime() - startDate.getTime()) / 60000);
+  };
+
+  const handleTimeChange = (field: "startTime" | "endTime", value: string) => {
+    const updated = { ...newActivity, [field]: value };
+    if (updated.startTime && updated.endTime) {
+      updated.defaultDuration = calculateDuration(
+        updated.startTime,
+        updated.endTime
+      );
+    }
+    setNewActivity(updated);
+  };
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -119,15 +140,73 @@ export default function AdminDashboard() {
       setLoading(true);
       const id = Date.now().toString();
       const activity = { id, ...newActivity };
+      await saveActivity(activity);
       setActivities([...activities, activity]);
       setNewActivity({
         name: "",
         description: "",
         color: "#000000",
         defaultDuration: 30,
+        startTime: "",
+        endTime: "",
       });
     } catch (error) {
       console.error("Error adding activity:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateActivity = async () => {
+    try {
+      setLoading(true);
+      if (editingActivityId) {
+        const updatedActivity = {
+          id: editingActivityId,
+          ...newActivity,
+        };
+        await saveActivity(updatedActivity);
+        setActivities(
+          activities.map((act) =>
+            act.id === editingActivityId ? updatedActivity : act
+          )
+        );
+        setEditingActivityId(null);
+        setNewActivity({
+          name: "",
+          description: "",
+          color: "#000000",
+          defaultDuration: 30,
+          startTime: "",
+          endTime: "",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating activity:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditActivity = (activity: Activity) => {
+    setNewActivity({
+      name: activity.name,
+      description: activity.description,
+      color: activity.color,
+      defaultDuration: activity.defaultDuration,
+      startTime: activity.startTime || "",
+      endTime: activity.endTime || "",
+    });
+    setEditingActivityId(activity.id);
+  };
+
+  const handleDeleteActivity = async (id: string) => {
+    try {
+      setLoading(true);
+      await deleteActivity(id);
+      setActivities(activities.filter((a) => a.id !== id));
+    } catch (error) {
+      console.error("Error deleting activity:", error);
     } finally {
       setLoading(false);
     }
@@ -248,26 +327,63 @@ export default function AdminDashboard() {
               className="p-1 h-10 border rounded focus:ring-2 focus:ring-blue-300"
             />
             <input
-              type="number"
-              value={newActivity.defaultDuration}
-              onChange={(e) =>
-                setNewActivity({
-                  ...newActivity,
-                  defaultDuration: parseInt(e.target.value),
-                })
-              }
-              placeholder="Duration (mins)"
+              type="time"
+              value={newActivity.startTime || ""}
+              onChange={(e) => handleTimeChange("startTime", e.target.value)}
               className="p-2 border rounded focus:ring-2 focus:ring-blue-300 text-black"
-              required
-              min="1"
             />
+            <input
+              type="time"
+              value={newActivity.endTime || ""}
+              onChange={(e) => handleTimeChange("endTime", e.target.value)}
+              className="p-2 border rounded focus:ring-2 focus:ring-blue-300 text-black"
+            />
+            <div className="flex items-center">
+              <input
+                type="number"
+                value={newActivity.defaultDuration}
+                onChange={(e) =>
+                  setNewActivity({
+                    ...newActivity,
+                    defaultDuration: parseInt(e.target.value),
+                  })
+                }
+                placeholder="Duration (mins)"
+                className="p-2 border rounded focus:ring-2 focus:ring-blue-300 text-black flex-1"
+                required
+                min="1"
+              />
+              <span className="ml-2 text-sm">mins</span>
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={handleAddActivity}
-            className="w-full md:w-auto px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
-            Add Activity
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={
+                editingActivityId ? handleUpdateActivity : handleAddActivity
+              }
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
+              {editingActivityId ? "Update Activity" : "Add Activity"}
+            </button>
+            {editingActivityId && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingActivityId(null);
+                  setNewActivity({
+                    name: "",
+                    description: "",
+                    color: "#000000",
+                    defaultDuration: 30,
+                    startTime: "",
+                    endTime: "",
+                  });
+                }}
+                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors">
+                Cancel
+              </button>
+            )}
+          </div>
         </form>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -280,7 +396,24 @@ export default function AdminDashboard() {
               <p className="text-white text-sm">{activity.description}</p>
               <p className="text-white text-xs mt-1">
                 Duration: {activity.defaultDuration} mins
+                {activity.startTime && activity.endTime && (
+                  <span className="block">
+                    {activity.startTime} - {activity.endTime}
+                  </span>
+                )}
               </p>
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() => handleEditActivity(activity)}
+                  className="text-white hover:text-blue-100 text-xs px-2 py-1 bg-blue-500 bg-opacity-50 rounded">
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDeleteActivity(activity.id)}
+                  className="text-white hover:text-red-100 text-xs px-2 py-1 bg-red-500 bg-opacity-50 rounded">
+                  Delete
+                </button>
+              </div>
             </div>
           ))}
         </div>

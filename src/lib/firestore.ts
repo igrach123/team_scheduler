@@ -75,3 +75,12 @@ export async function deleteEmployee(id: string): Promise<void> {
     throw new Error("Failed to delete employee. Check Firestore permissions.");
   }
 }
+
+export async function deleteActivity(id: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, ACTIVITIES_COLLECTION, id));
+  } catch (error) {
+    console.error("Error deleting activity:", error);
+    throw new Error("Failed to delete activity. Check Firestore permissions.");
+  }
+}

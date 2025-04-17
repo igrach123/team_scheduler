@@ -11,6 +11,8 @@ export interface Activity {
   description: string;
   color: string;
   defaultDuration: number; // minutes
+  startTime?: string;
+  endTime?: string;
 }
 
 export interface LeaveRequest {
