@@ -2,11 +2,14 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, FormEvent, useEffect } from "react";
 import { useSchedule } from "@/contexts/ScheduleContext";
+import { defaultActivities } from "@/lib/defaultActivities";
+import { Activity } from "@/types/schedule";
 import {
   getEmployees,
   addEmployee,
   updateEmployee,
   deleteEmployee,
+  saveActivity,
 } from "@/lib/firestore";
 
 interface FormEmployee {
@@ -22,7 +25,17 @@ export default function AdminDashboard() {
     "employee"
   );
   const [employees, setEmployees] = useState<FormEmployee[]>([]);
+  const [activities, setActivities] = useState<Activity[]>(defaultActivities);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingActivityId, setEditingActivityId] = useState<string | null>(
+    null
+  );
+  const [newActivity, setNewActivity] = useState<Omit<Activity, "id">>({
+    name: "",
+    description: "",
+    color: "#000000",
+    defaultDuration: 30,
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -99,6 +112,25 @@ export default function AdminDashboard() {
     setEmployeeName(employee.name);
     setEmployeeRole(employee.role);
     setEditingId(employee.id);
+  };
+
+  const handleAddActivity = async () => {
+    try {
+      setLoading(true);
+      const id = Date.now().toString();
+      const activity = { id, ...newActivity };
+      setActivities([...activities, activity]);
+      setNewActivity({
+        name: "",
+        description: "",
+        color: "#000000",
+        defaultDuration: 30,
+      });
+    } catch (error) {
+      console.error("Error adding activity:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -180,7 +212,79 @@ export default function AdminDashboard() {
         )}
       </div>
 
-      {/* TODO: Add Activities Form and Schedule components */}
+      {/* Activities Management Section */}
+      <div className="mt-8 p-4 border rounded-lg bg-white shadow-sm">
+        <h2 className="text-lg font-semibold mb-4 text-gray-800">
+          Activity Management
+        </h2>
+        <form className="space-y-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <input
+              type="text"
+              value={newActivity.name}
+              onChange={(e) =>
+                setNewActivity({ ...newActivity, name: e.target.value })
+              }
+              placeholder="Activity name"
+              className="p-2 border rounded focus:ring-2 focus:ring-blue-300 text-black"
+              required
+            />
+            <input
+              type="text"
+              value={newActivity.description}
+              onChange={(e) =>
+                setNewActivity({ ...newActivity, description: e.target.value })
+              }
+              placeholder="Description"
+              className="p-2 border rounded focus:ring-2 focus:ring-blue-300 text-black"
+              required
+            />
+            <input
+              type="color"
+              value={newActivity.color}
+              onChange={(e) =>
+                setNewActivity({ ...newActivity, color: e.target.value })
+              }
+              className="p-1 h-10 border rounded focus:ring-2 focus:ring-blue-300"
+            />
+            <input
+              type="number"
+              value={newActivity.defaultDuration}
+              onChange={(e) =>
+                setNewActivity({
+                  ...newActivity,
+                  defaultDuration: parseInt(e.target.value),
+                })
+              }
+              placeholder="Duration (mins)"
+              className="p-2 border rounded focus:ring-2 focus:ring-blue-300 text-black"
+              required
+              min="1"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleAddActivity}
+            className="w-full md:w-auto px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
+            Add Activity
+          </button>
+        </form>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {activities.map((activity) => (
+            <div
+              key={activity.id}
+              className="p-3 rounded-lg border"
+              style={{ backgroundColor: activity.color }}>
+              <h3 className="font-medium text-white">{activity.name}</h3>
+              <p className="text-white text-sm">{activity.description}</p>
+              <p className="text-white text-xs mt-1">
+                Duration: {activity.defaultDuration} mins
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
