@@ -1,0 +1,6 @@
+{
+  "firestore": {
+    "rules": "C:\\Users\\Igor\\Local Sites\\react\\team-scheduler\\team_scheduler\\firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}
