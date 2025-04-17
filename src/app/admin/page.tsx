@@ -12,6 +12,8 @@ import {
   saveActivity,
   deleteActivity,
 } from "@/lib/firestore";
+import { collection, query, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface FormEmployee {
   id: string;
@@ -26,7 +28,17 @@ export default function AdminDashboard() {
     "employee"
   );
   const [employees, setEmployees] = useState<FormEmployee[]>([]);
-  const [activities, setActivities] = useState<Activity[]>(defaultActivities);
+  const {
+    activities,
+    loading: activitiesLoading,
+    setActivities,
+  } = useSchedule();
+
+  useEffect(() => {
+    console.log("Current activities:", activities);
+    console.log("Loading state:", activitiesLoading);
+  }, [activities, activitiesLoading]);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingActivityId, setEditingActivityId] = useState<string | null>(
     null
@@ -57,7 +69,29 @@ export default function AdminDashboard() {
     }
     setNewActivity(updated);
   };
+
   const [loading, setLoading] = useState(true);
+
+  const loadActivities = async () => {
+    try {
+      setLoading(true);
+      // First fetch activities directly
+      const q = query(collection(db, "activities"));
+      const querySnapshot = await getDocs(q);
+      const initialActivities = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Activity[];
+
+      // Update context with initial data
+      setActivities(initialActivities);
+      console.log("Initial activities loaded:", initialActivities);
+    } catch (error) {
+      console.error("Error loading activities:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const loadEmployees = async () => {
@@ -82,6 +116,7 @@ export default function AdminDashboard() {
     };
     console.log("0. Mounting admin page - starting load");
     loadEmployees();
+    loadActivities();
     return () => console.log("7. Unmounting admin page");
   }, []);
 
@@ -137,11 +172,10 @@ export default function AdminDashboard() {
 
   const handleAddActivity = async () => {
     try {
-      setLoading(true);
       const id = Date.now().toString();
       const activity = { id, ...newActivity };
+      console.log(activity);
       await saveActivity(activity);
-      setActivities([...activities, activity]);
       setNewActivity({
         name: "",
         description: "",
@@ -152,25 +186,17 @@ export default function AdminDashboard() {
       });
     } catch (error) {
       console.error("Error adding activity:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleUpdateActivity = async () => {
     try {
-      setLoading(true);
       if (editingActivityId) {
         const updatedActivity = {
           id: editingActivityId,
           ...newActivity,
         };
         await saveActivity(updatedActivity);
-        setActivities(
-          activities.map((act) =>
-            act.id === editingActivityId ? updatedActivity : act
-          )
-        );
         setEditingActivityId(null);
         setNewActivity({
           name: "",
@@ -183,6 +209,15 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       console.error("Error updating activity:", error);
+    }
+  };
+
+  const handleDeleteActivity = async (id: string) => {
+    try {
+      setLoading(true);
+      await deleteActivity(id);
+    } catch (error) {
+      console.error("Error deleting activity:", error);
     } finally {
       setLoading(false);
     }
@@ -198,18 +233,6 @@ export default function AdminDashboard() {
       endTime: activity.endTime || "",
     });
     setEditingActivityId(activity.id);
-  };
-
-  const handleDeleteActivity = async (id: string) => {
-    try {
-      setLoading(true);
-      await deleteActivity(id);
-      setActivities(activities.filter((a) => a.id !== id));
-    } catch (error) {
-      console.error("Error deleting activity:", error);
-    } finally {
-      setLoading(false);
-    }
   };
 
   return (
@@ -297,7 +320,7 @@ export default function AdminDashboard() {
           Activity Management
         </h2>
         <form className="space-y-4 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             <input
               type="text"
               value={newActivity.name}
@@ -386,37 +409,50 @@ export default function AdminDashboard() {
           </div>
         </form>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {activities.map((activity) => (
-            <div
-              key={activity.id}
-              className="p-3 rounded-lg border"
-              style={{ backgroundColor: activity.color }}>
-              <h3 className="font-medium text-white">{activity.name}</h3>
-              <p className="text-white text-sm">{activity.description}</p>
-              <p className="text-white text-xs mt-1">
-                Duration: {activity.defaultDuration} mins
-                {activity.startTime && activity.endTime && (
-                  <span className="block">
-                    {activity.startTime} - {activity.endTime}
-                  </span>
-                )}
-              </p>
-              <div className="flex gap-2 mt-2">
-                <button
-                  onClick={() => handleEditActivity(activity)}
-                  className="text-white hover:text-blue-100 text-xs px-2 py-1 bg-blue-500 bg-opacity-50 rounded">
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDeleteActivity(activity.id)}
-                  className="text-white hover:text-red-100 text-xs px-2 py-1 bg-red-500 bg-opacity-50 rounded">
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))}
+        {/* Debug info */}
+        <div className="mb-4 p-2 bg-gray-100 text-xs">
+          <p>Activities count: {activities?.length || 0}</p>
+          <p>Loading state: {activitiesLoading ? "Loading" : "Ready"}</p>
         </div>
+
+        {/* Activities list */}
+        {activities && activities.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {activities.map((activity) => (
+              <div
+                key={activity.id}
+                className="p-3 rounded-lg border"
+                style={{ backgroundColor: activity.color }}>
+                <h3 className="font-medium text-white">{activity.name}</h3>
+                <p className="text-white text-sm">{activity.description}</p>
+                <div className="mt-2 text-white text-xs">
+                  <p>Duration: {activity.defaultDuration} mins</p>
+                  {activity.startTime && activity.endTime && (
+                    <p>
+                      {activity.startTime} - {activity.endTime}
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={() => handleEditActivity(activity)}
+                    className="text-white hover:text-blue-100 text-xs px-2 py-1 bg-blue-500 bg-opacity-50 rounded">
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteActivity(activity.id)}
+                    className="text-white hover:text-red-100 text-xs px-2 py-1 bg-red-500 bg-opacity-50 rounded">
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-4 text-black">
+            No activities found. Add some activities above.
+          </div>
+        )}
       </div>
     </div>
   );

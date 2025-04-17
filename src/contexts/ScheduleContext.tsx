@@ -2,20 +2,23 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { Activity, Schedule } from "../types/schedule";
 import { defaultActivities } from "../lib/defaultActivities";
-import { auth } from "../lib/firebase";
+import { auth, db } from "../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { getActivities, initializeDefaultActivities } from "../lib/firestore";
+import { initializeDefaultActivities } from "../lib/firestore";
+import { collection, onSnapshot, DocumentData } from "firebase/firestore";
 
 interface ScheduleContextType {
   activities: Activity[];
   schedules: Schedule[];
   loading: boolean;
+  setActivities: React.Dispatch<React.SetStateAction<Activity[]>>;
 }
 
 const ScheduleContext = createContext<ScheduleContextType>({
   activities: [],
   schedules: [],
   loading: true,
+  setActivities: () => {},
 });
 
 export function ScheduleProvider({ children }: { children: React.ReactNode }) {
@@ -24,14 +27,36 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        initializeDefaultActivities(defaultActivities)
-          .then(() => getActivities())
-          .then((activities) => {
-            setActivities(activities);
-            setLoading(false);
-          });
+        try {
+          await initializeDefaultActivities(defaultActivities);
+          const q = collection(db, "activities");
+          const activitiesUnsub = onSnapshot(
+            q,
+            (snapshot) => {
+              console.log(
+                "Activities snapshot:",
+                snapshot.docs.length,
+                "activities"
+              );
+              const activities = snapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+              })) as Activity[];
+              setActivities(activities);
+              setLoading(false);
+            },
+            (error) => {
+              console.error("Firestore error:", error);
+              setLoading(false);
+            }
+          );
+          return activitiesUnsub;
+        } catch (error) {
+          console.error("Initialization error:", error);
+          setLoading(false);
+        }
       } else {
         setActivities([]);
         setSchedules([]);
@@ -39,11 +64,12 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, []);
 
   return (
-    <ScheduleContext.Provider value={{ activities, schedules, loading }}>
+    <ScheduleContext.Provider
+      value={{ activities, schedules, loading, setActivities }}>
       {children}
     </ScheduleContext.Provider>
   );
