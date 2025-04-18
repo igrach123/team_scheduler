@@ -2,7 +2,6 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, FormEvent, useEffect } from "react";
 import { useSchedule } from "@/contexts/ScheduleContext";
-import { defaultActivities } from "@/lib/defaultActivities";
 import { Activity } from "@/types/schedule";
 import {
   getEmployees,
@@ -72,27 +71,6 @@ export default function AdminDashboard() {
 
   const [loading, setLoading] = useState(true);
 
-  const loadActivities = async () => {
-    try {
-      setLoading(true);
-      // First fetch activities directly
-      const q = query(collection(db, "activities"));
-      const querySnapshot = await getDocs(q);
-      const initialActivities = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Activity[];
-
-      // Update context with initial data
-      setActivities(initialActivities);
-      console.log("Initial activities loaded:", initialActivities);
-    } catch (error) {
-      console.error("Error loading activities:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     const loadEmployees = async () => {
       try {
@@ -116,7 +94,6 @@ export default function AdminDashboard() {
     };
     console.log("0. Mounting admin page - starting load");
     loadEmployees();
-    loadActivities();
     return () => console.log("7. Unmounting admin page");
   }, []);
 
@@ -416,7 +393,11 @@ export default function AdminDashboard() {
         </div>
 
         {/* Activities list */}
-        {activities && activities.length > 0 ? (
+        {activitiesLoading ? (
+          <div className="text-center py-4 text-black">
+            Loading activities...
+          </div>
+        ) : activities && activities.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {activities.map((activity) => (
               <div

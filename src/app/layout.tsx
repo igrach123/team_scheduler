@@ -1,5 +1,6 @@
 import { AuthProvider } from "@/contexts/AuthContext";
 import { FirebaseProvider } from "@/contexts/FirebaseContext";
+import { ScheduleProvider } from "@/contexts/ScheduleContext";
 import Navbar from "@/components/Navbar";
 import "./globals.css";
 
@@ -13,8 +14,10 @@ export default function RootLayout({
       <body>
         <FirebaseProvider>
           <AuthProvider>
-            <Navbar />
-            {children}
+            <ScheduleProvider>
+              <Navbar />
+              {children}
+            </ScheduleProvider>
           </AuthProvider>
         </FirebaseProvider>
       </body>

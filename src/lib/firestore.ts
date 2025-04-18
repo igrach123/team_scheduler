@@ -25,16 +25,7 @@ export async function saveActivity(activity: Activity): Promise<void> {
   await setDoc(doc(db, ACTIVITIES_COLLECTION, activity.id), activity);
 }
 
-export async function initializeDefaultActivities(
-  defaultActivities: Activity[]
-): Promise<void> {
-  const existingActivities = await getActivities();
-  if (existingActivities.length === 0) {
-    await Promise.all(
-      defaultActivities.map((activity) => saveActivity(activity))
-    );
-  }
-}
+// Removed initializeDefaultActivities function
 
 export async function getEmployees(): Promise<Employee[]> {
   const q = query(collection(db, EMPLOYEES_COLLECTION));
