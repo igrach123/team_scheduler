@@ -12,8 +12,8 @@ interface ScheduleSlot {
   time: string;
   days: {
     [key: string]: {
-      employee?: Employee;
-      activity?: Activity;
+      employees: Employee[];
+      activities: Activity[];
     };
   };
 }
@@ -45,7 +45,9 @@ export default function ScheduleGrid(): React.ReactElement {
     ];
     return times.map((time) => ({
       time,
-      days: Object.fromEntries(days.map((day) => [day, {}])),
+      days: Object.fromEntries(
+        days.map((day) => [day, { employees: [], activities: [] }])
+      ),
     }));
   };
 
@@ -72,13 +74,14 @@ export default function ScheduleGrid(): React.ReactElement {
       setSlots((prev) =>
         prev.map((slot) => {
           if (slot.time === time) {
+            const existingActivities = slot.days[day]?.activities || [];
             return {
               ...slot,
               days: {
                 ...slot.days,
                 [day]: {
                   ...slot.days[day],
-                  activity,
+                  activities: [...existingActivities, activity],
                 },
               },
             };
@@ -94,13 +97,14 @@ export default function ScheduleGrid(): React.ReactElement {
       setSlots((prev) =>
         prev.map((slot) => {
           if (slot.time === time) {
+            const existingEmployees = slot.days[day]?.employees || [];
             return {
               ...slot,
               days: {
                 ...slot.days,
                 [day]: {
                   ...slot.days[day],
-                  employee,
+                  employees: [...existingEmployees, employee],
                 },
               },
             };
@@ -155,20 +159,79 @@ export default function ScheduleGrid(): React.ReactElement {
                 className="p-2 min-h-12 bg-white border border-gray-300"
                 data-day={day}
                 data-time={slot.time}>
-                {slots[index]?.days[day]?.activity && (
-                  <div
-                    className="p-1 rounded text-white text-xs font-medium text-center border border-white"
-                    style={{
-                      backgroundColor: slots[index].days[day].activity?.color,
-                    }}>
-                    {slots[index].days[day].activity?.name}
-                  </div>
-                )}
-                {slots[index]?.days[day]?.employee && (
-                  <div className="p-1 rounded bg-blue-100 text-blue-800 text-xs font-medium text-center border border-blue-200">
-                    {slots[index].days[day].employee?.name}
-                  </div>
-                )}
+                <div className="space-y-1 min-h-[80px]">
+                  {slots[index]?.days[day]?.activities.map((activity, i) => (
+                    <div
+                      key={`${activity.id}-${i}`}
+                      className="group relative p-1 rounded text-white text-xs font-medium text-center border border-white"
+                      style={{ backgroundColor: activity.color }}>
+                      {activity.name}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSlots((prev) =>
+                            prev.map((slot, slotIdx) => {
+                              if (slotIdx === index) {
+                                return {
+                                  ...slot,
+                                  days: {
+                                    ...slot.days,
+                                    [day]: {
+                                      ...slot.days[day],
+                                      activities: slot.days[
+                                        day
+                                      ].activities.filter(
+                                        (a) => a.id !== activity.id
+                                      ),
+                                    },
+                                  },
+                                };
+                              }
+                              return slot;
+                            })
+                          );
+                        }}
+                        className="absolute -top-1 -right-1 hidden group-hover:block bg-red-500 text-white rounded-full w-4 h-4 text-[8px]">
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  {slots[index]?.days[day]?.employees.map((employee, i) => (
+                    <div
+                      key={`${employee.id}-${i}`}
+                      className="group relative p-1 rounded bg-blue-100 text-blue-800 text-xs font-medium text-center border border-blue-200">
+                      {employee.name}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSlots((prev) =>
+                            prev.map((slot, slotIdx) => {
+                              if (slotIdx === index) {
+                                return {
+                                  ...slot,
+                                  days: {
+                                    ...slot.days,
+                                    [day]: {
+                                      ...slot.days[day],
+                                      employees: slot.days[
+                                        day
+                                      ].employees.filter(
+                                        (e) => e.id !== employee.id
+                                      ),
+                                    },
+                                  },
+                                };
+                              }
+                              return slot;
+                            })
+                          );
+                        }}
+                        className="absolute -top-1 -right-1 hidden group-hover:block bg-red-500 text-white rounded-full w-4 h-4 text-[8px]">
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>

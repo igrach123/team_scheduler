@@ -279,7 +279,11 @@ export default function AdminDashboard() {
                 {employees.map((emp) => (
                   <div
                     key={emp.id}
-                    className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border">
+                    className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border cursor-grab active:cursor-grabbing"
+                    draggable
+                    data-type="employee"
+                    data-id={emp.id}
+                    data-employee={JSON.stringify(emp)}>
                     <div>
                       <p className="font-medium text-gray-800">{emp.name}</p>
                       <span
@@ -424,8 +428,11 @@ export default function AdminDashboard() {
               {activities.map((activity) => (
                 <div
                   key={activity.id}
-                  className="p-3 rounded-lg border"
-                  style={{ backgroundColor: activity.color }}>
+                  className="p-3 rounded-lg border cursor-grab active:cursor-grabbing"
+                  style={{ backgroundColor: activity.color }}
+                  draggable
+                  data-type="activity"
+                  data-id={activity.id}>
                   <h3 className="font-medium text-white">{activity.name}</h3>
                   <p className="text-white text-sm">{activity.description}</p>
                   <div className="mt-2 text-white text-xs">
@@ -458,7 +465,8 @@ export default function AdminDashboard() {
           )}
         </div>
       </div>
-      {/* Schedule Grid Section */}
+
+      {/* Schedule Grid Section - Moved to bottom */}
       <div className="mt-8 p-4 border rounded-lg bg-white shadow-sm">
         <h2 className="text-lg font-semibold mb-4 text-gray-800">
           Weekly Schedule
